@@ -1,0 +1,102 @@
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 20px;
+}
+
+.login-card {
+  background: white;
+  border-radius: 8px;
+  padding: 40px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  max-width: 500px;
+  width: 100%;
+}
+
+.login-card h2 {
+  color: #333;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.login-description {
+  color: #666;
+  text-align: center;
+  margin-bottom: 30px;
+  line-height: 1.5;
+}
+
+.login-card .form-group {
+  margin-bottom: 20px;
+}
+
+.login-card .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+}
+
+.login-card .form-group textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: monospace;
+  resize: vertical;
+  min-height: 100px;
+  transition: border-color 0.3s ease;
+}
+
+.login-card .form-group textarea:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.login-card .form-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: flex-end;
+  margin-top: 30px;
+}
+
+.login-help {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.login-help h3 {
+  color: #333;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+}
+
+.login-help ol {
+  color: #666;
+  line-height: 1.6;
+  padding-left: 20px;
+}
+
+.login-help li {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+  .login-card {
+    padding: 20px;
+    margin: 20px;
+  }
+  
+  .login-card .form-actions {
+    flex-direction: column;
+  }
+  
+  .login-card .form-actions .btn {
+    width: 100%;
+  }
+} 

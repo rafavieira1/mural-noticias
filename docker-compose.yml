@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  mural-noticias-backend:
+    build: ./backend
+    ports:
+      - "3002:3001"
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://mural_user:mural_password@mural-noticias-db:5432/mural_noticias
+      - AUTH_SERVICE_URL=${AUTH_SERVICE_URL:-http://auth-service:3000}
+      - NODE_ENV=production
+    depends_on:
+      - mural-noticias-db
+    networks:
+      - mural-network
+
+  mural-noticias-frontend:
+    build: ./frontend
+    ports:
+      - "3003:80"
+    depends_on:
+      - mural-noticias-backend
+    networks:
+      - mural-network
+
+  mural-noticias-db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=mural_noticias
+      - POSTGRES_USER=mural_user
+      - POSTGRES_PASSWORD=mural_password
+    volumes:
+      - mural_db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - mural-network
+
+volumes:
+  mural_db_data:
+
+networks:
+  mural-network:
+    driver: bridge 
