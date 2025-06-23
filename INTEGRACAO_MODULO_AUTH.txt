@@ -1,0 +1,246 @@
+GUIA DE INTEGRAÇÃO COM O MÓDULO AUTH
+==========================================
+
+Este documento explica como integrar o módulo "Mural de Notícias" com o módulo Auth 
+quando ele estiver disponível no projeto final.
+
+PREPARAÇÃO ATUAL
+================
+
+Atualmente o projeto está configurado para integração futura:
+- Middleware de autenticação já implementado em: backend/src/middleware/auth.js
+- Endpoints configurados para validar JWT
+- Frontend preparado para receber e usar tokens JWT
+- Docker Compose configurado para comunicação entre serviços
+
+PASSOS PARA INTEGRAÇÃO
+======================
+
+1. OBTER INFORMAÇÕES DO MÓDULO AUTH
+-----------------------------------
+Você precisará das seguintes informações do colega responsável pelo módulo Auth:
+
+a) URL do serviço de autenticação
+   - Exemplo: http://auth-service:3000 (nome do container no Docker)
+   - Ou: http://localhost:PORTA (se rodando localmente)
+
+b) Endpoint de validação de token
+   - Exemplo: GET /api/auth/validate-token
+   - Ou: POST /api/auth/verify
+
+c) Formato da resposta esperada
+   - Exemplo: { "valid": true, "user": { "id": 1, "email": "user@email.com" } }
+
+d) Como o token deve ser enviado
+   - Header: Authorization: Bearer <token>
+   - Ou outro formato específico
+
+2. ATUALIZAR O MIDDLEWARE DE AUTENTICAÇÃO
+-----------------------------------------
+Arquivo: backend/src/middleware/auth.js
+
+Substituir o código atual por:
+
+```javascript
+const axios = require('axios');
+
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-service:3000';
+
+const authenticateToken = async (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de acesso requerido' });
+  }
+
+  try {
+    // Fazer requisição para o módulo Auth para validar o token
+    const response = await axios.get(`${AUTH_SERVICE_URL}/api/auth/validate-token`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.data.valid) {
+      req.user = response.data.user; // Adicionar dados do usuário na requisição
+      next();
+    } else {
+      return res.status(403).json({ error: 'Token inválido' });
+    }
+  } catch (error) {
+    console.error('Erro ao validar token:', error.message);
+    return res.status(403).json({ error: 'Token inválido ou serviço de auth indisponível' });
+  }
+};
+
+module.exports = { authenticateToken };
+```
+
+3. ATUALIZAR VARIÁVEIS DE AMBIENTE
+-----------------------------------
+Arquivo: backend/.env
+
+Adicionar:
+```
+AUTH_SERVICE_URL=http://auth-service:3000
+```
+
+4. ATUALIZAR DOCKER COMPOSE
+----------------------------
+Arquivo: docker-compose.yml
+
+Adicionar o serviço Auth e configurar dependências:
+
+```yaml
+version: '3.8'
+
+services:
+  # Seus serviços existentes...
+  noticias-backend:
+    build: ./backend
+    ports:
+      - "3003:3000"
+    environment:
+      - DB_HOST=noticias-db
+      - DB_PORT=5432
+      - DB_NAME=noticias_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - AUTH_SERVICE_URL=http://auth-service:3000  # NOVA LINHA
+    depends_on:
+      - noticias-db
+      - auth-service  # NOVA DEPENDÊNCIA
+    networks:
+      - app-network
+
+  # Adicionar o serviço Auth (exemplo - ajustar conforme necessário)
+  auth-service:
+    build: ../modulo-auth  # Caminho para o módulo Auth
+    ports:
+      - "3001:3000"
+    networks:
+      - app-network
+
+  # Seus outros serviços...
+```
+
+5. INSTALAR DEPENDÊNCIAS NECESSÁRIAS
+------------------------------------
+No backend, instalar axios se não estiver instalado:
+
+```bash
+cd backend
+npm install axios
+```
+
+6. ATUALIZAR O FRONTEND PARA LOGIN REAL
+----------------------------------------
+Arquivo: frontend/src/components/Login.tsx
+
+Substituir o login manual por integração real:
+
+```typescript
+const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  try {
+    // Fazer login no módulo Auth
+    const response = await fetch('http://localhost:3001/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      localStorage.setItem('token', data.token);
+      setIsLoggedIn(true);
+      alert('Login realizado com sucesso!');
+    } else {
+      alert('Credenciais inválidas');
+    }
+  } catch (error) {
+    console.error('Erro no login:', error);
+    alert('Erro ao fazer login');
+  }
+};
+```
+
+7. TESTES DE INTEGRAÇÃO
+------------------------
+Após a integração, testar:
+
+a) Testar login no frontend
+b) Verificar se o token é armazenado
+c) Testar endpoints protegidos com token válido
+d) Testar endpoints com token inválido (deve retornar 401/403)
+e) Verificar logs de ambos os serviços
+
+8. COMANDOS PARA TESTE
+----------------------
+# Iniciar todos os serviços
+docker-compose up --build
+
+# Testar endpoint protegido
+curl -H "Authorization: Bearer SEU_TOKEN_AQUI" http://localhost:3003/api/noticias
+
+# Verificar logs
+docker-compose logs noticias-backend
+docker-compose logs auth-service
+
+TROUBLESHOOTING
+===============
+
+Problemas Comuns:
+-----------------
+1. Serviço Auth não responde
+   - Verificar se o container está rodando: docker ps
+   - Verificar logs: docker-compose logs auth-service
+   - Verificar URL de conexão
+
+2. Token sempre inválido
+   - Verificar formato do token
+   - Verificar endpoint de validação
+   - Verificar headers da requisição
+
+3. Erro de CORS
+   - Configurar CORS no módulo Auth para aceitar requisições do frontend
+   - Ou configurar proxy no frontend
+
+4. Erro de rede entre containers
+   - Verificar se ambos estão na mesma network
+   - Verificar nomes dos serviços no docker-compose
+
+CHECKLIST DE INTEGRAÇÃO
+========================
+[ ] Obter informações do módulo Auth
+[ ] Atualizar middleware de autenticação
+[ ] Configurar variáveis de ambiente
+[ ] Atualizar docker-compose.yml
+[ ] Instalar dependências (axios)
+[ ] Atualizar componente de Login
+[ ] Testar login real
+[ ] Testar endpoints protegidos
+[ ] Verificar logs de ambos os serviços
+[ ] Documentar mudanças no README
+
+CONTATO PARA INTEGRAÇÃO
+=======================
+Quando for integrar, você precisará:
+1. Coordenar com o colega do módulo Auth
+2. Definir formato dos endpoints
+3. Testar a integração em conjunto
+4. Ajustar configurações conforme necessário
+
+BACKUP DE SEGURANÇA
+===================
+Antes de fazer a integração:
+1. Fazer backup do código atual
+2. Criar branch no git: git checkout -b integracao-auth
+3. Commit das mudanças: git commit -m "Integração com módulo Auth"
+
+Este documento deve ser usado como guia durante a integração.
+Ajuste os detalhes específicos conforme as especificações do módulo Auth. 
